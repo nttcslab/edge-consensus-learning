@@ -1,1 +1,1 @@
-# edgeconsensus-learning
+# edge-consensus-learning
