@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package mnw;
+
+service MnwService {
+    rpc Hello(Params) returns (Status) {}
+    rpc GetState(Params) returns (stream StateParams) {}
+    rpc Swap(stream SwapParams) returns (stream SwapParams) {}
+}
+
+message Params {
+    string src = 1;
+}
+
+message Status {
+    int32 status = 1;
+}
+
+message StateParams {
+    bytes params = 1;
+}
+
+message SwapParams {
+    string src = 1;
+    bool is_state = 2;
+    bytes params = 3;
+}

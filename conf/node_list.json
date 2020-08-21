@@ -1,0 +1,31 @@
+{
+  "nodes": [
+    {
+      "name": "CASPER",
+      "addr": "localhost",
+      "port": "9997",
+      "edges": [
+        "BALTHASAR",
+        "MELCHIOR"
+      ]
+    },
+    {
+      "name": "BALTHASAR",
+      "addr": "localhost",
+      "port": "9998",
+      "edges": [
+        "CASPER",
+        "MELCHIOR"
+      ]
+    },
+    {
+      "name": "MELCHIOR",
+      "addr": "localhost",
+      "port": "9999",
+      "edges": [
+        "BALTHASAR",
+        "CASPER"
+      ]
+    }
+  ]
+}
