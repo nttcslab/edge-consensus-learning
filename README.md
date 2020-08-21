@@ -10,7 +10,7 @@ Conference: Knowledge-Discovery in Databases (KDD) 2020__
 
 Compared with such conventional algorithms as gossip SGD, our method is robust to further practical situations where the data are statistically heterogeneous across the nodes and/or where communication is asynchronous. This is because our variable update rule is derived from node-cost-sum minimization while satisfying a linear constraint so that the model variable for each node is identical.
 
-To verify the effectiveness of our method, we prepared a sample code that runs on GPU/GPUs machines. Edge-consensus learning is composed of (i) PDMMSGD and (ii) ADMM SGD. Note that the original code used in the KDD paper was written in Matlab and developed by Kenta Niwa; code is written in PyTorch and developed by Hashimom.
+To verify the effectiveness of our method, we prepared a sample code that runs on GPU/GPUs machines. Edge-consensus learning is composed of (i) PDMMSGD and (ii) ADMM SGD. Note that the original code used in the KDD paper was written in Matlab and developed by Kenta Niwa; code is written in PyTorch and developed by [Masahiko Hashimoto](https://github.com/hashimom).
 
 
 # License
