@@ -48,7 +48,7 @@ class Edge:
                 for res in responses:
                     params_buf.write(res.params)
                 params_buf.seek(0)
-                self._state_r = torch.load(params_buf)
+                self._state_r = torch.load(params_buf, map_location=torch.device(self._device))
 
                 swap_req_iter = self.SwapReqIter(self._self_name, self.dual, False, self._grpc_buf_size)
                 responses = stub.Swap(swap_req_iter)
@@ -56,7 +56,7 @@ class Edge:
                 for res in responses:
                     params_buf.write(res.params)
                 params_buf.seek(0)
-                self._dual_r = torch.load(params_buf)
+                self._dual_r = torch.load(params_buf, map_location=torch.device(self._device))
 
             except grpc.RpcError:
                 self._grpc_err_cnt += 1
@@ -94,9 +94,9 @@ class Edge:
 
     def set_recv_params(self, params, is_state):
         if is_state:
-            self._state_r = torch.load(io.BytesIO(params.getvalue()))
+            self._state_r = torch.load(io.BytesIO(params.getvalue()), map_location=torch.device(self._device))
         else:
-            self._dual_r = torch.load(io.BytesIO(params.getvalue()))
+            self._dual_r = torch.load(io.BytesIO(params.getvalue()), map_location=torch.device(self._device))
 
     def rcv_state(self):
         return self._state_r

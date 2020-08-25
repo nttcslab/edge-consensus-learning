@@ -175,8 +175,8 @@ class Kings:
             correct = 0
             for data in self.test_loader:
                 images, labels = data
-                images = images.to("cuda")
-                labels = labels.to("cuda")
+                images = images.to(self.device)
+                labels = labels.to(self.device)
                 outputs = self.model(images)
                 _, predicted = torch.max(outputs, 1)
                 c = (predicted == labels).squeeze()

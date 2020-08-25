@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import math
 import torch
+import torch.nn as nn
 from torch.optim.optimizer import Optimizer
 from .contract import Contract
 
@@ -9,10 +10,11 @@ class AdmmSGDVanilla(Optimizer):
     def __init__(self, name, nodes, device, model, interval=10, offset=0, mu=200, eta=1.0, rho=0.1):
         lr = 1 / mu
         eta_rate = eta / mu
-        defaults = dict(lr=lr, eta=eta, rho=rho, initial_lr=lr, eta_rate=eta_rate, device=device)
+        defaults = dict(lr=lr, eta=eta, rho=rho, initial_lr=lr, eta_rate=eta_rate)
         super(AdmmSGDVanilla, self).__init__(model.parameters(), defaults)
         self._contract = Contract(name, nodes, device, model, interval, offset)
-        self._device = device
+        self._diff = torch.tensor(0., device=device)
+        self._criterion = nn.MSELoss()
 
         m_state = model.state_dict()
         dim_num_ary = []
@@ -51,15 +53,14 @@ class AdmmSGDVanilla(Optimizer):
 
     @torch.no_grad()
     def update(self):
-        diff = None
         edges = self._contract.edges()
         edge_num = float(len(edges))
+        torch.nn.init.zeros_(self._diff)
 
         for edge in edges.values():
             edge.params_lock()
 
         for group in self.param_groups:
-            diff = torch.tensor(0., device=group["device"])
             mu = 1 / group["lr"]
             group["eta"] = mu * group["eta_rate"]
 
@@ -86,11 +87,11 @@ class AdmmSGDVanilla(Optimizer):
                 for edge in edges.values():
                     edge.state[i] = p.data.clone()
                     edge.dual[i] = edge.rcv_dual()[i] - 2 * edge.prm_a() * edge.state[i]
-                    diff += torch.mean((edge.state[i] - edge.rcv_state()[i]) ** 2)
+                    self._diff += self._criterion(p.data, edge.rcv_state()[i])
 
         for edge in edges.values():
             edge.params_release()
 
         self._contract.swap()
-        return diff
+        return self._diff
 

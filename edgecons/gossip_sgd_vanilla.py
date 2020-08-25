@@ -9,7 +9,8 @@ class GossipSGDVanilla(SGD):
                  lr=0.05, momentum=0, dampening=0, weight_decay=0, nesterov=False):
         super(GossipSGDVanilla, self).__init__(model.parameters(), lr, momentum, dampening, weight_decay, nesterov)
         self._contract = Contract(name, nodes, device, model, interval, offset)
-        self._device = device
+        self._diff = torch.tensor(0., device=device)
+        self._criterion = nn.MSELoss()
         for group in self.param_groups:
             group["initial_lr"] = lr
 
@@ -21,7 +22,7 @@ class GossipSGDVanilla(SGD):
     @torch.no_grad()
     def update(self):
         edges = self._contract.edges()
-        diff = torch.tensor(0., device=self._device)
+        torch.nn.init.zeros_(self._diff)
         for edge in edges.values():
             edge.params_lock()
             for group in self.param_groups:
@@ -29,9 +30,9 @@ class GossipSGDVanilla(SGD):
                     d_p = p.data
                     p.data = torch.div((d_p + edge.rcv_state()[i]), 2)
                     edge.state[i] = p.data.clone()
-                    diff += torch.mean((p.data - edge.rcv_state()[i]) ** 2)
+                    self._diff += self._criterion(p.data, edge.rcv_state()[i])
             edge.params_release()
 
         self._contract.swap()
-        return diff
+        return self._diff
 

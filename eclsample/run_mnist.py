@@ -55,7 +55,7 @@ class Kings:
 
     def __init__(self, name, nodes, algorithm="pdmm", device="cpu", interval=6, offset=0, log_dir="/log/"):
         self.logger = logging.getLogger(name)
-        self.model = Net().to("cuda")
+        self.model = Net().to(device)
         self.device = device
 
         if algorithm == "gossip":
