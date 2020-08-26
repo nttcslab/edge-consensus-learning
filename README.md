@@ -6,8 +6,8 @@ Our study __"edge-consensus learning"__ is an effective deep neural network (DNN
 
 __Title: "Edge-consensus Learning: Deep Learning on P2P Networks with Nonhomogeneous Data"  
 Authors: Kenta Niwa (NTT), Noboru Harada (NTT), Guoqiang Zhang (University Technology of Sydney), and W. Bastiaan Kleijn (Victoria University of Wellington)  
-Conference: Proceedings of the 26th ACM SIGKDD International Conference on Knowledge Discovery & Data Mining (KDD 2020)__
-
+Conference: Proceedings of the 26th ACM SIGKDD International Conference on Knowledge Discovery & Data Mining (KDD 2020)
+page: 668-678__
 https://dl.acm.org/doi/pdf/10.1145/3394486.3403109
 
 Compared with such conventional algorithms as gossip SGD, our method is robust to further practical situations where the data are statistically heterogeneous across the nodes and/or where communication is asynchronous. This is because our variable update rule is derived from node-cost-sum minimization while satisfying a linear constraint so that the model variable for each node is identical.
@@ -20,7 +20,8 @@ Carefully read the license file before installing our software. The following pa
 
 __Title: "Edge-consensus Learning: Deep Learning on P2P Networks with Nonhomogeneous Data"  
 Authors: Kenta Niwa (NTT), Noboru Harada (NTT), Guoqiang Zhang (University Technology of Sydney), and W. Bastiaan Kleijn (Victoria University of Wellington)  
-Conference: Proceedings of the 26th ACM SIGKDD International Conference on Knowledge Discovery & Data Mining (KDD 2020)__
+Conference: Proceedings of the 26th ACM SIGKDD International Conference on Knowledge Discovery & Data Mining (KDD 2020)
+page: 668-678__
 
 After checking the license file, start the installation by following the guide.
 
