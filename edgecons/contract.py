@@ -14,24 +14,29 @@ from .pb.mnw_pb2_grpc import MnwServiceServicer, add_MnwServiceServicer_to_serve
 
 
 class MnwGateway(MnwServiceServicer):
-    def __init__(self, name, self_index, edges, edge_info, device, model_state_dict, grpc_buf_size):
+    def __init__(self, name, self_index, edges, edge_info, device, model,
+                 is_state=True, is_dual=True, is_avg=False, grpc_buf_size=524288):
         self._name = name
         self._index = self_index
         self._edges = edges
         self._edge_info = edge_info
         self._device = device
-        self._state_dict = model_state_dict
+        self._model = model
+        self._is_state = is_state
+        self._is_dual = is_dual
+        self._is_avg = is_avg
         self._grpc_buf_size = grpc_buf_size
 
     def Hello(self, request, context):
         if request.src not in self._edges:
             self._edges[request.src] = Edge(self._edge_info[request.src], self._index, self._name,
-                                            self._device, self._state_dict, self._grpc_buf_size)
+                                            self._device, self._model.state_dict(),
+                                            self._is_state, self._is_dual, self._is_avg, self._grpc_buf_size)
         return PbStatus(status=200)
 
     def GetState(self, request, context):
         r_buf = io.BytesIO()
-        torch.save(self._state_dict, r_buf)
+        torch.save(self._model.state_dict(), r_buf)
         r_buf.seek(0)
         while True:
             read_buf = r_buf.read(self._grpc_buf_size)
@@ -47,19 +52,19 @@ class MnwGateway(MnwServiceServicer):
         for req in request_iter:
             if edge is None:
                 edge = self._edges[req.src]
-                is_state = req.is_state
-                send_buf = edge.get_send_params(is_state)
+                send_buf = edge.get_send_params()
                 send_buf.seek(0)
 
             bin_params = send_buf.read(self._grpc_buf_size)
             read_buf.write(req.params)
-            yield SwapParams(src=self._name, is_state=req.is_state, params=bin_params)
+            yield SwapParams(src=self._name, params=bin_params)
 
-        edge.set_recv_params(read_buf, is_state)
+        edge.set_recv_params(read_buf)
 
 
 class Contract:
-    def __init__(self, name, nodes, device, model, interval=10, offset=0, grpc_buf_size=2097152):
+    def __init__(self, name, nodes, device, model, interval=10, offset=0,
+                 is_state=True, is_dual=True, is_avg=False, grpc_buf_size=524288):
         self._update_interval = interval
         self._update_cnt = offset
         self._next_edge = 0
@@ -86,9 +91,9 @@ class Contract:
 
         # gRPC Server start
         self._server = grpc.server(futures.ThreadPoolExecutor(max_workers=len(node_name_list)*2))
-        add_MnwServiceServicer_to_server(
-            MnwGateway(name, self_index, self._edges, edge_info, device, model.state_dict(), grpc_buf_size),
-            self._server)
+        add_MnwServiceServicer_to_server(MnwGateway(name, self_index, self._edges, edge_info, device,
+                                                    model, is_state, is_dual, is_avg, grpc_buf_size),
+                                         self._server)
         port_str = '[::]:' + nodes[self_index]["port"]
         self._server.add_insecure_port(port_str)
         self._server.start()
@@ -99,7 +104,7 @@ class Contract:
                 con = self.hello(name, edge_info[edge_name]["addr"], model, state_req)
                 if con:
                     self._edges[edge_name] = Edge(edge_info[edge_name], self_index, name, device,
-                                                  model.state_dict(), grpc_buf_size)
+                                                  model.state_dict(), is_state, is_dual, is_avg, grpc_buf_size)
                     state_req = False
 
     def __del__(self):

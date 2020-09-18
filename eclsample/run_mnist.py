@@ -9,9 +9,9 @@ import torchvision
 import torchvision.transforms as transforms
 import torch.nn as nn
 import torch.nn.functional as F
-from edgecons import GossipSGDVanilla
-from edgecons import PdmmSGDVanilla
-from edgecons import AdmmSGDVanilla
+from edgecons import GossipSGD
+from edgecons import PdmmSGD
+from edgecons import AdmmSGD
 
 formatter = '%(asctime)s [ECL] %(levelname)s :  %(message)s'
 logging.basicConfig(level=logging.DEBUG, format=formatter)
@@ -59,11 +59,11 @@ class Kings:
         self.device = device
 
         if algorithm == "gossip":
-            self.optimizer = GossipSGDVanilla(name, nodes, device, self.model, interval, offset)
+            self.optimizer = GossipSGD(name, nodes, device, self.model, interval, offset)
         elif algorithm == "admm":
-            self.optimizer = AdmmSGDVanilla(name, nodes, device, self.model, interval, offset)
+            self.optimizer = AdmmSGD(name, nodes, device, self.model, interval, offset)
         else:  # pdmm_vanilla
-            self.optimizer = PdmmSGDVanilla(name, nodes, device, self.model, interval, offset)
+            self.optimizer = PdmmSGD(name, nodes, device, self.model, interval, offset)
 
         self.transform = transforms.Compose(
             [transforms.ToTensor(), transforms.Normalize((0.5, ), (0.5, ))])
@@ -94,9 +94,9 @@ class Kings:
 
         for epoch in range(max_epoch):   # loop over the dataset multiple times
             running_loss = 0.0
-            latest_diff = 0.0
             epc_cnt = 0
 
+            self.model.train()
             for i, data in enumerate(train_loader, 0):
                 # get the inputs; data is a list of [inputs, labels]
                 inputs, labels = data
@@ -114,13 +114,15 @@ class Kings:
                 self.optimizer.step()
 
                 # Update
-                diff = self.optimizer.update()
-                latest_diff = diff.item()
+                self.optimizer.update()
                 epc_cnt += 1
 
             self.latest_epoch = epoch + 1
             latest_loss = running_loss / epc_cnt
+            diff = self.optimizer.diff()
+            latest_diff = diff.item()
 
+            self.model.eval()
             with torch.no_grad():
                 test_criterion = nn.CrossEntropyLoss(reduction="sum")
                 test_loss = 0.0

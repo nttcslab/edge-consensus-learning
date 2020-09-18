@@ -1,5 +1,6 @@
 # Update
-24th, Aug, 2020: Upload the first version
+- 24th, Aug, 2020: Upload the first version
+- 18th, Nov, 2020: Accelerate swap processing
 
 # Goal
 Our study __"edge-consensus learning"__ is an effective deep neural network (DNN) optimization algorithm that can use decentralized datasets over a peer-to-peer (P2P) network. Its details are explained in the following paper:

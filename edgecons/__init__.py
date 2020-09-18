@@ -1,4 +1,4 @@
-from .gossip_sgd_vanilla import GossipSGDVanilla
-from .pdmm_sgd_vanilla import PdmmSGDVanilla
-from .admm_sgd_vanilla import AdmmSGDVanilla
+from .gossip_sgd import GossipSGD
+from .pdmm_sgd import PdmmSGD
+from .admm_sgd import AdmmSGD
 

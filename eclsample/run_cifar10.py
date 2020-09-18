@@ -9,9 +9,9 @@ import torchvision
 import torchvision.transforms as transforms
 import torch.nn as nn
 import torch.nn.functional as F
-from edgecons import GossipSGDVanilla
-from edgecons import PdmmSGDVanilla
-from edgecons import AdmmSGDVanilla
+from edgecons import GossipSGD
+from edgecons import PdmmSGD
+from edgecons import AdmmSGD
 
 formatter = '%(asctime)s [ECL] %(levelname)s :  %(message)s'
 logging.basicConfig(level=logging.DEBUG, format=formatter)
@@ -78,11 +78,11 @@ class Kings:
         self.batch_size = batch_size
 
         if algorithm == "gossip":
-            self.optimizer = GossipSGDVanilla(name, nodes, device, self.model, interval, offset)
+            self.optimizer = GossipSGD(name, nodes, device, self.model, interval, offset)
         elif algorithm == "admm":
-            self.optimizer = AdmmSGDVanilla(name, nodes, device, self.model, interval, offset)
+            self.optimizer = AdmmSGD(name, nodes, device, self.model, interval, offset)
         else:  # pdmm_vanilla
-            self.optimizer = PdmmSGDVanilla(name, nodes, device, self.model, interval, offset)
+            self.optimizer = PdmmSGD(name, nodes, device, self.model, interval, offset)
 
         # Data Load
         transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
@@ -109,10 +109,10 @@ class Kings:
         scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=10, gamma=0.95, last_epoch=100)
 
         for epoch in range(max_epoch):   # loop over the dataset multiple times
-            latest_diff = 0.0
             running_loss = 0.0
             epc_cnt = 0
 
+            self.model.train()
             for data in self.train_loader:
                 # get the inputs; data is a list of [inputs, labels]
                 inputs, labels = data
@@ -130,14 +130,16 @@ class Kings:
                 self.optimizer.step()
 
                 # Update
-                diff = self.optimizer.update()
-                latest_diff = diff.item()
+                self.optimizer.update()
                 epc_cnt += 1
 
             scheduler.step()
             self.latest_epoch = epoch + 1
             latest_loss = running_loss / epc_cnt
+            diff = self.optimizer.diff()
+            latest_diff = diff.item()
 
+            self.model.eval()
             with torch.no_grad():
                 test_criterion = nn.CrossEntropyLoss(reduction="sum")
                 test_loss = 0.0

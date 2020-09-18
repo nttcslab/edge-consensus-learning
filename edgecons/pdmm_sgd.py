@@ -6,13 +6,18 @@ from torch.optim.optimizer import Optimizer
 from .contract import Contract
 
 
-class PdmmSGDVanilla(Optimizer):
+class PdmmSGD(Optimizer):
     def __init__(self, name, nodes, device, model, interval=10, offset=0, mu=200, eta=1.0, rho=0.1):
         lr = 1 / mu
         eta_rate = eta / mu
         defaults = dict(lr=lr, eta=eta, rho=rho, initial_lr=lr, eta_rate=eta_rate)
-        super(PdmmSGDVanilla, self).__init__(model.parameters(), defaults)
-        self._contract = Contract(name, nodes, device, model, interval, offset)
+        super(PdmmSGD, self).__init__(model.parameters(), defaults)
+
+        self._is_state = True
+        if rho == 0:
+            self._is_state = False
+
+        self._contract = Contract(name, nodes, device, model, interval, offset, is_state=self._is_state)
         self._diff = torch.tensor(0., device=device)
         self._criterion = nn.MSELoss()
 
@@ -40,7 +45,7 @@ class PdmmSGDVanilla(Optimizer):
             group["dim_num"] = dim_num_ary
 
     def __setstate__(self, state):
-        super(PdmmSGDVanilla, self).__setstate__(state)
+        super(PdmmSGD, self).__setstate__(state)
         for group in self.param_groups:
             group.setdefault('nesterov', False)
 
@@ -55,10 +60,6 @@ class PdmmSGDVanilla(Optimizer):
     def update(self):
         edges = self._contract.edges()
         edge_num = float(len(edges))
-        torch.nn.init.zeros_(self._diff)
-
-        for edge in edges.values():
-            edge.params_lock()
 
         for group in self.param_groups:
             mu = 1 / group["lr"]
@@ -79,19 +80,31 @@ class PdmmSGDVanilla(Optimizer):
 
                 for edge in edges.values():
                     consensus += vs_metric_eta / edge_num * edge.prm_a() * edge.rcv_dual()[i]
-                    proximity += vs_metric_rho / edge_num * edge.rcv_state()[i]
-                    coefficient += vs_metric_eta / edge_num + vs_metric_rho / edge_num
+                    if self._is_state:
+                        proximity += vs_metric_rho / edge_num * edge.rcv_state()[i]
+                        coefficient += vs_metric_eta / edge_num + vs_metric_rho / edge_num
+                    else:
+                        coefficient += vs_metric_eta / edge_num
 
                 p.data = (v_grad * p_data - m_grad + consensus + proximity) / coefficient
 
                 for edge in edges.values():
-                    edge.state[i] = p.data.clone()
-                    edge.dual[i] = edge.rcv_dual()[i] - 2 * edge.prm_a() * edge.state[i]
-                    self._diff += self._criterion(p.data, edge.rcv_state()[i])
-
-        for edge in edges.values():
-            edge.params_release()
+                    edge.update(p.data, i)
 
         self._contract.swap()
+
+    @torch.no_grad()
+    def diff(self):
+        edges = self._contract.edges()
+        torch.nn.init.zeros_(self._diff)
+
+        for edge in edges.values():
+            diff_buf = edge.diff_buff()
+            buf_name_list = list(diff_buf)
+            for group in self.param_groups:
+                for i, p in enumerate(group['params']):
+                    self._diff += self._criterion(p.data, diff_buf[buf_name_list[i]])
+
         return self._diff
+
 

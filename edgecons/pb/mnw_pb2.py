@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\tmnw.proto\x12\x03mnw\"\x15\n\x06Params\x12\x0b\n\x03src\x18\x01 \x01(\t\"\x18\n\x06Status\x12\x0e\n\x06status\x18\x01 \x01(\x05\"\x1d\n\x0bStateParams\x12\x0e\n\x06params\x18\x01 \x01(\x0c\";\n\nSwapParams\x12\x0b\n\x03src\x18\x01 \x01(\t\x12\x10\n\x08is_state\x18\x02 \x01(\x08\x12\x0e\n\x06params\x18\x03 \x01(\x0c\x32\x90\x01\n\nMnwService\x12#\n\x05Hello\x12\x0b.mnw.Params\x1a\x0b.mnw.Status\"\x00\x12-\n\x08GetState\x12\x0b.mnw.Params\x1a\x10.mnw.StateParams\"\x00\x30\x01\x12.\n\x04Swap\x12\x0f.mnw.SwapParams\x1a\x0f.mnw.SwapParams\"\x00(\x01\x30\x01\x62\x06proto3'
+  serialized_pb=b'\n\tmnw.proto\x12\x03mnw\"\x15\n\x06Params\x12\x0b\n\x03src\x18\x01 \x01(\t\"\x18\n\x06Status\x12\x0e\n\x06status\x18\x01 \x01(\x05\"\x1d\n\x0bStateParams\x12\x0e\n\x06params\x18\x01 \x01(\x0c\")\n\nSwapParams\x12\x0b\n\x03src\x18\x01 \x01(\t\x12\x0e\n\x06params\x18\x02 \x01(\x0c\x32\x90\x01\n\nMnwService\x12#\n\x05Hello\x12\x0b.mnw.Params\x1a\x0b.mnw.Status\"\x00\x12-\n\x08GetState\x12\x0b.mnw.Params\x1a\x10.mnw.StateParams\"\x00\x30\x01\x12.\n\x04Swap\x12\x0f.mnw.SwapParams\x1a\x0f.mnw.SwapParams\"\x00(\x01\x30\x01\x62\x06proto3'
 )
 
 
@@ -137,15 +137,8 @@ _SWAPPARAMS = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='is_state', full_name='mnw.SwapParams.is_state', index=1,
-      number=2, type=8, cpp_type=7, label=1,
-      has_default_value=False, default_value=False,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='params', full_name='mnw.SwapParams.params', index=2,
-      number=3, type=12, cpp_type=9, label=1,
+      name='params', full_name='mnw.SwapParams.params', index=1,
+      number=2, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=b"",
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -163,7 +156,7 @@ _SWAPPARAMS = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=98,
-  serialized_end=157,
+  serialized_end=139,
 )
 
 DESCRIPTOR.message_types_by_name['Params'] = _PARAMS
@@ -209,8 +202,8 @@ _MNWSERVICE = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=160,
-  serialized_end=304,
+  serialized_start=142,
+  serialized_end=286,
   methods=[
   _descriptor.MethodDescriptor(
     name='Hello',

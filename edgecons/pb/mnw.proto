@@ -22,6 +22,5 @@ message StateParams {
 
 message SwapParams {
     string src = 1;
-    bool is_state = 2;
-    bytes params = 3;
+    bytes params = 2;
 }
