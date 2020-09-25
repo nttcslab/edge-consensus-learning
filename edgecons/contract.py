@@ -3,6 +3,7 @@ import grpc
 import io
 import time
 import torch
+import logging
 from collections import OrderedDict
 from concurrent import futures
 from .edge import Edge
@@ -15,7 +16,7 @@ from .pb.mnw_pb2_grpc import MnwServiceServicer, add_MnwServiceServicer_to_serve
 
 class MnwGateway(MnwServiceServicer):
     def __init__(self, name, self_index, edges, edge_info, device, model,
-                 is_state=True, is_dual=True, is_avg=False, grpc_buf_size=524288):
+                 is_state=True, is_dual=True, is_avg=False, grpc_buf_size=524288, grpc_timeout=1.0):
         self._name = name
         self._index = self_index
         self._edges = edges
@@ -26,12 +27,14 @@ class MnwGateway(MnwServiceServicer):
         self._is_dual = is_dual
         self._is_avg = is_avg
         self._grpc_buf_size = grpc_buf_size
+        self._grpc_timeout = grpc_timeout
 
     def Hello(self, request, context):
         if request.src not in self._edges:
             self._edges[request.src] = Edge(self._edge_info[request.src], self._index, self._name,
                                             self._device, self._model.state_dict(),
-                                            self._is_state, self._is_dual, self._is_avg, self._grpc_buf_size)
+                                            self._is_state, self._is_dual, self._is_avg,
+                                            self._grpc_buf_size, self._grpc_timeout)
         return PbStatus(status=200)
 
     def GetState(self, request, context):
@@ -64,7 +67,7 @@ class MnwGateway(MnwServiceServicer):
 
 class Contract:
     def __init__(self, name, nodes, device, model, interval=10, offset=0,
-                 is_state=True, is_dual=True, is_avg=False, grpc_buf_size=524288):
+                 is_state=True, is_dual=True, is_avg=False, grpc_buf_size=524288, grpc_timeout=1.0):
         self._update_interval = interval
         self._update_cnt = offset
         self._next_edge = 0
@@ -92,7 +95,7 @@ class Contract:
         # gRPC Server start
         self._server = grpc.server(futures.ThreadPoolExecutor(max_workers=len(node_name_list)*2))
         add_MnwServiceServicer_to_server(MnwGateway(name, self_index, self._edges, edge_info, device,
-                                                    model, is_state, is_dual, is_avg, grpc_buf_size),
+                                                    model, is_state, is_dual, is_avg, grpc_buf_size, grpc_timeout),
                                          self._server)
         port_str = '[::]:' + nodes[self_index]["port"]
         self._server.add_insecure_port(port_str)
@@ -104,7 +107,8 @@ class Contract:
                 con = self.hello(name, edge_info[edge_name]["addr"], model, state_req)
                 if con:
                     self._edges[edge_name] = Edge(edge_info[edge_name], self_index, name, device,
-                                                  model.state_dict(), is_state, is_dual, is_avg, grpc_buf_size)
+                                                  model.state_dict(), is_state, is_dual, is_avg,
+                                                  grpc_buf_size, grpc_timeout)
                     state_req = False
 
     def __del__(self):
@@ -147,7 +151,9 @@ class Contract:
                 pull_edge = list(self._edges.values())[self._next_edge]
                 is_connected = pull_edge.swap()
                 if not is_connected:
-                    self._edges.pop(list(self._edges.keys())[self._next_edge])
+                    remove_edge_name = list(self._edges.keys())[self._next_edge]
+                    self._edges.pop(remove_edge_name)
+                    logging.info("%s : edge removed.", remove_edge_name)
 
                 if len(list(self._edges.values())) > 0:
                     self._next_edge += 1

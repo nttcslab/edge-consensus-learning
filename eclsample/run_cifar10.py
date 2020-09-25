@@ -4,6 +4,7 @@ import argparse
 import logging
 import csv
 import os
+import time
 import torch
 import torchvision
 import torchvision.transforms as transforms
@@ -111,6 +112,7 @@ class Kings:
         for epoch in range(max_epoch):   # loop over the dataset multiple times
             running_loss = 0.0
             epc_cnt = 0
+            start_time = time.time()
 
             self.model.train()
             for data in self.train_loader:
@@ -133,6 +135,7 @@ class Kings:
                 self.optimizer.update()
                 epc_cnt += 1
 
+            end_time = time.time()
             scheduler.step()
             self.latest_epoch = epoch + 1
             latest_loss = running_loss / epc_cnt
@@ -154,8 +157,8 @@ class Kings:
                     epc_cnt += 1
 
             latest_test_loss = test_loss / epc_cnt / self.batch_size
-            self.logger.info('[%03d] loss: train %.4f, test %.4f / diff: %.8f' %
-                             (self.latest_epoch, latest_loss, latest_test_loss, latest_diff))
+            self.logger.info('[%03d] loss: %.3f/%.3f, diff: %.8f, time: %.2fsec' %
+                             (self.latest_epoch, latest_loss, latest_test_loss, latest_diff, end_time - start_time))
             self.writer_loss.writerow([self.latest_epoch, latest_loss, latest_test_loss, latest_diff])
 
             if self.latest_epoch == 1 or self.latest_epoch % test_interval == 0:

@@ -7,7 +7,8 @@ from .contract import Contract
 
 
 class PdmmSGD(Optimizer):
-    def __init__(self, name, nodes, device, model, interval=10, offset=0, mu=200, eta=1.0, rho=0.1):
+    def __init__(self, name, nodes, device, model, interval=10, offset=0, mu=200, eta=1.0, rho=0.1,
+                 grpc_buf_size=524288, grpc_timeout=1.0):
         lr = 1 / mu
         eta_rate = eta / mu
         defaults = dict(lr=lr, eta=eta, rho=rho, initial_lr=lr, eta_rate=eta_rate)
@@ -17,7 +18,8 @@ class PdmmSGD(Optimizer):
         if rho == 0:
             self._is_state = False
 
-        self._contract = Contract(name, nodes, device, model, interval, offset, is_state=self._is_state)
+        self._contract = Contract(name, nodes, device, model, interval, offset, is_state=self._is_state,
+                                  grpc_buf_size=grpc_buf_size, grpc_timeout=grpc_timeout)
         self._diff = torch.tensor(0., device=device)
         self._criterion = nn.MSELoss()
 
@@ -100,10 +102,11 @@ class PdmmSGD(Optimizer):
 
         for edge in edges.values():
             diff_buf = edge.diff_buff()
-            buf_name_list = list(diff_buf)
-            for group in self.param_groups:
-                for i, p in enumerate(group['params']):
-                    self._diff += self._criterion(p.data, diff_buf[buf_name_list[i]])
+            if diff_buf is not None:
+                buf_name_list = list(diff_buf)
+                for group in self.param_groups:
+                    for i, p in enumerate(group['params']):
+                        self._diff += self._criterion(p.data, diff_buf[buf_name_list[i]])
 
         return self._diff
 

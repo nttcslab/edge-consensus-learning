@@ -3,6 +3,7 @@ import copy
 import grpc
 import io
 import torch
+import logging
 from .pb.mnw_pb2 import Params as PbParams
 from .pb.mnw_pb2 import SwapParams
 from .pb.mnw_pb2_grpc import MnwServiceStub
@@ -10,7 +11,7 @@ from .pb.mnw_pb2_grpc import MnwServiceStub
 
 class Edge:
     def __init__(self, edge_info, self_index, self_name, device, state_dict,
-                 is_state=True, is_dual=True, is_avg=False, grpc_buf_size=524288, err_max_cnt=10):
+                 is_state=True, is_dual=True, is_avg=False, grpc_buf_size=524288, grpc_timeout=1.0, err_max_cnt=10):
         self._node_addr = edge_info["addr"]
         self._node_idx = edge_info["index"]
         self._self_idx = self_index
@@ -18,6 +19,7 @@ class Edge:
         self._device = device
         self._grpc_err_cnt = 0
         self._grpc_buf_size = grpc_buf_size
+        self._grpc_timeout = grpc_timeout
         self._err_max_cnt = err_max_cnt
 
         self._params_snd = {"state": None, "dual": None}
@@ -48,24 +50,28 @@ class Edge:
         if self_index > self._node_idx:
             self._prm_a = -1
 
-        swap_channel = grpc.insecure_channel(self._node_addr)
-        self._stub = MnwServiceStub(swap_channel)
+        self._swap_channel = grpc.insecure_channel(self._node_addr)
 
     def swap(self):
         is_connected = True
         try:
             swap_req_iter = self.SwapReqIter(self._self_name, self._params_snd, self._grpc_buf_size)
-            responses = self._stub.Swap(swap_req_iter)
             params_buf = io.BytesIO()
-            for res in responses:
+            stub = MnwServiceStub(self._swap_channel)
+            for res in stub.Swap(swap_req_iter, timeout=self._grpc_timeout):
                 params_buf.write(res.params)
             params_buf.seek(0)
             self._params_rcv = torch.load(params_buf, map_location=torch.device(self._device))
+            self._grpc_err_cnt = 0
 
         except grpc.RpcError:
             self._grpc_err_cnt += 1
-            if self._err_max_cnt < self._grpc_err_cnt:
+            logging.warning("grpc timeout (%d/%d)" % (self._grpc_err_cnt, self._err_max_cnt))
+            if self._err_max_cnt <= self._grpc_err_cnt:
                 is_connected = False
+
+        except RuntimeError:
+            logging.warning("received data can't load")
 
         return is_connected
 
@@ -98,16 +104,31 @@ class Edge:
         return send_buf
 
     def set_recv_params(self, params):
-        self._params_rcv = torch.load(io.BytesIO(params.getvalue()), map_location=torch.device(self._device))
+        try:
+            self._params_rcv = torch.load(io.BytesIO(params.getvalue()), map_location=torch.device(self._device))
+        except RuntimeError:
+            logging.warning("received data can't load (srv)")
 
     def diff_buff(self):
+        ret = None
         req = PbParams(src=self._self_name)
-        params_buf = io.BytesIO()
-        responses = self._stub.GetState(req)
-        for res in responses:
-            params_buf.write(res.params)
-        params_buf.seek(0)
-        return torch.load(io.BytesIO(params_buf.getvalue()), map_location=torch.device(self._device))
+        try:
+            params_buf = io.BytesIO()
+            stub = MnwServiceStub(self._swap_channel)
+            for res in stub.GetState(req, timeout=self._grpc_timeout):
+                params_buf.write(res.params)
+            params_buf.seek(0)
+            ret = torch.load(io.BytesIO(params_buf.getvalue()), map_location=torch.device(self._device))
+            self._grpc_err_cnt = 0
+
+        except grpc.RpcError:
+            logging.warning("grpc timeout (diff) (%d/%d)" % (self._grpc_err_cnt, self._err_max_cnt))
+            self._grpc_err_cnt += 1
+
+        except RuntimeError:
+            logging.warning("received data can't load (diff)")
+
+        return ret
 
     def rcv_state(self):
         return self._params_rcv["state"]
